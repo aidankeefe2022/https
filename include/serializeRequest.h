@@ -27,4 +27,5 @@ typedef struct https_request {
 
 struct https_request* https_serializeRequest(struct aid_arena *arena, struct aid_string string);
 
+bool https_freeRequest(struct https_request* request);
 #endif //HTTPS_PARSER_H

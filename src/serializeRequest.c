@@ -37,6 +37,7 @@ static bool isCorrectHttpVersion(u64* idx, struct aid_string string) {
             return false;
         }
     }
+    (*idx)++;
     return true;
 }
 
@@ -69,8 +70,8 @@ bool checkHttpEndLine(u64* idx, struct aid_string string, bool lookAhead) {
 
 static struct aid_string* parseSingleHeader(struct aid_arena* arena, u64* idx, struct aid_string string) {
     char* cur = &string.s[*idx];
-    u64 line_len = 1; // set to start at one because we want to include the \r char that will be replaced with \0 char by str_new
-    char* end = &string.s[string.length - 1];
+    u64 line_len = 0; // set to start at one because we want to include the \r char that will be replaced with \0 char by str_new
+    char* end = &string.s[string.length];
     while (*cur != '\r' && *cur != '\n' && cur != end) {
         line_len++;
         cur++;
@@ -79,7 +80,9 @@ static struct aid_string* parseSingleHeader(struct aid_arena* arena, u64* idx, s
     if (!new) {
         return nullptr;
     }
-    *idx += line_len+1;
+    if (*cur != '\r' && *(cur+1) != '\n')
+        return nullptr;
+    *idx += line_len+2;
     return new;
 }
 
@@ -94,7 +97,11 @@ static struct aid_LinkedList parseHeaders(struct aid_arena* arena, u64* idx, str
         if (checkHttpEndLine(idx, string, false) || checkHttpEndLine(idx, string, true)) {
             break;
         }
-        if (!aid_push(result, parseSingleHeader(arena, idx, string), STRING)) {
+        auto header = parseSingleHeader(arena, idx, string);
+        if (!header) {
+            break;
+        }
+        if (!aid_push(result, header, STRING)) {
             return (aid_LinkedList){0};
         }
     }
@@ -118,14 +125,17 @@ struct https_request* https_serializeRequest(struct aid_arena* arena, struct aid
     }
     request->headers = parseHeaders(arena, &idx, raw_request);
 
-    if (raw_request.length <= idx) {
+    if (raw_request.length < idx) {
         request->body = *Q_STR(arena,"");
     }else {
         if (!checkHttpEndLine(&idx, raw_request,false)) {
             goto Error;
         }
         idx+=2;//consume blank line
-        u64 body_len = raw_request.length - idx;
+        i64 body_len = raw_request.length - idx;
+        if (body_len <= 0) {
+            body_len = 0;
+        }
         struct aid_string* body = aid_str_new(arena, body_len, &raw_request.s[idx], body_len);
         if (!body) {
             goto Error;
@@ -136,4 +146,8 @@ struct https_request* https_serializeRequest(struct aid_arena* arena, struct aid
     return request;
 Error:
     return nullptr;
+}
+
+bool https_freeRequest(struct https_request* request) {
+    return aid_free_LL(&request->headers);
 }

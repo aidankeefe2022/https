@@ -15,7 +15,7 @@ typedef struct https_response {
 }https_response;
 
 bool https_responseAddStatus(struct https_response* response, u64 status, struct aid_string statusReason);
-bool https_responseAddHeader(struct https_response* response, struct aid_string header);
+bool https_responseAddHeader(struct https_response* response, struct aid_string* header);
 bool https_responseAddBody(struct https_response* response, struct aid_string body);
 struct aid_string https_responseDeserialize(struct https_response* response);
 

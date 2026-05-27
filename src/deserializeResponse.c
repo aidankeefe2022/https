@@ -10,8 +10,8 @@ bool https_responseAddStatus(struct https_response* response, u64 status, struct
     response->statusReason = statusReason;
     return true;
 }
-bool https_responseAddHeader(struct https_response* response, struct aid_string headerText) {
-    aid_push(&response->headers, &headerText, STRING);
+bool https_responseAddHeader(struct https_response* response, struct aid_string* headerText) {
+    aid_push(&response->headers, headerText, STRING);
     return true;
 }
 bool https_responseAddBody(struct https_response* response, struct aid_string body) {
@@ -20,10 +20,15 @@ bool https_responseAddBody(struct https_response* response, struct aid_string bo
 }
 
 struct aid_string https_responseDeserialize(struct https_response* response) {
-    struct aid_string responseString = (struct aid_string){.options = AID_STR_AUTO_RESIZE};
+    struct aid_string responseString = (struct aid_string){.options = AID_STR_AUTO_RESIZE};\
+    aid_str_append_string(&responseString, &STR_LIT("HTTP/1.1 "));
     aid_str_append_int(&responseString, response->status);
     aid_str_append_char(&responseString, ' ');
     aid_str_append_string(&responseString, &response->statusReason);
+    aid_str_append_char(&responseString, '\r');
+    aid_str_append_char(&responseString, '\n');
+    aid_str_append_string(&responseString, &STR_LIT("Content-Length: "));
+    aid_str_append_int(&responseString, response->body.length);
     aid_str_append_char(&responseString, '\r');
     aid_str_append_char(&responseString, '\n');
     for (aid_LLNode *node = response->headers.head; node != nullptr; node = node->next) {
@@ -31,6 +36,10 @@ struct aid_string https_responseDeserialize(struct https_response* response) {
         aid_str_append_char(&responseString, '\r');
         aid_str_append_char(&responseString, '\n');
     }
+
+    aid_str_append_char(&responseString, '\r');
+    aid_str_append_char(&responseString, '\n');
     aid_str_append_string(&responseString, &response->body);
+    aid_free_LL(&response->headers);
     return responseString;
 }

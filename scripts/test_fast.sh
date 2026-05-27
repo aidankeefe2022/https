@@ -2,7 +2,7 @@
 set -uo pipefail # Removed -e to manually handle background job failures
 
 CC=gcc
-CFLAGS="-g -O0 -fsanitize=address,undefined -I../include -lAidan -fno-omit-frame-pointer"
+CFLAGS="-g -O0 -fsanitize=address,undefined -I../include -lAidan -lwolfssl -fno-omit-frame-pointer"
 RUN_DIR="../.test_bins"
 GREEN='\033[0;32m'
 RED='\033[0;31m'
